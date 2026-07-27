@@ -89,7 +89,8 @@ function isOwner(record = state.currentRecord) {
 }
 
 function canEdit() {
-  return !state.currentRecord || isOwner();
+  // Every signed-in teammate can edit every format in the communal library.
+  return Boolean(state.session);
 }
 
 function markDirty() {
@@ -185,7 +186,7 @@ async function refreshFormats({ preserveDraft = true, fromRealtime = false } = {
     } else if (latest.version_number !== previous.version_number) {
       if (preserveDraft && state.dirty) {
         state.currentRecord = { ...previous, remote_version_number: latest.version_number };
-        if (fromRealtime) toast(`${ownerName(latest)} or another editor saved a newer version. Your draft was preserved.`, 'error');
+        if (fromRealtime) toast('Another teammate saved a newer version. Your draft was preserved.', 'error');
       } else {
         state.currentRecord = latest;
         state.draft = normalizeFormat(latest.format_data);
@@ -237,7 +238,7 @@ function formatCardHtml(record) {
         <input type="checkbox" data-action="toggle-compare" data-format-id="${record.id}" ${selected ? 'checked' : ''} aria-label="Select ${escapeHtml(record.name)} for comparison">
         <div class="format-card-title">
           <h3 title="${escapeHtml(record.name)}">${escapeHtml(record.name)}</h3>
-          <p>${escapeHtml(ownerName(record))} · v${record.version_number} · ${record.visibility}</p>
+          <p>${escapeHtml(ownerName(record))} · v${record.version_number} · communal</p>
         </div>
       </div>
       <div class="format-card-metrics">
@@ -261,6 +262,7 @@ function renderCompareControls() {
 function openRecord(record) {
   state.currentRecord = record;
   state.draft = normalizeFormat(record.format_data);
+  state.draft.visibility = 'team';
   state.dirty = false;
   renderLibrary();
   renderEditor();
@@ -269,6 +271,7 @@ function openRecord(record) {
 function newFormat() {
   state.currentRecord = null;
   state.draft = createDefaultFormat(state.formats.length + 1);
+  state.draft.visibility = 'team';
   state.dirty = true;
   renderLibrary();
   renderEditor();
@@ -278,8 +281,8 @@ function updateEditorToolbar() {
   if (!state.draft) return;
   const owner = state.currentRecord ? ownerName(state.currentRecord) : (state.profile?.display_name || state.profile?.email);
   $('#editorOwner').textContent = state.currentRecord
-    ? `${isOwner() ? 'Your format' : 'Team format'} · ${owner}`
-    : 'New format · not saved yet';
+    ? `Communal format · created by ${owner}`
+    : 'New communal format · not saved yet';
   $('#editorTitle').textContent = state.draft.name || 'Untitled format';
 
   const meta = state.currentRecord
@@ -288,7 +291,7 @@ function updateEditorToolbar() {
   $('#editorMetadata').textContent = meta;
 
   $('#saveButton').classList.toggle('hidden', !canEdit());
-  $('#deleteButton').classList.toggle('hidden', !isOwner());
+  $('#deleteButton').classList.toggle('hidden', !state.currentRecord);
   $('#historyButton').disabled = !state.currentRecord;
   $('#saveButton').textContent = state.currentRecord ? 'Save new version' : 'Publish to cloud';
   $('#saveButton').disabled = !state.dirty && Boolean(state.currentRecord);
@@ -381,12 +384,11 @@ function expenseHtml(expense) {
 function renderForm() {
   const s = state.draft;
   $('#formRoot').innerHTML = `
-    ${canEdit() ? '' : '<div class="readonly-note">You are viewing a teammate’s format. Duplicate it to experiment without changing their original.</div>'}
     <div class="section">
       <div class="scenario-meta">
         <div class="simple-field"><label>Format name</label><input type="text" data-prop="name" value="${escapeHtml(s.name)}" ${disabledAttr()}></div>
         <div class="simple-field"><label>Currency</label><select data-prop="currency" ${disabledAttr()}>${['USD','CAD','EUR','GBP','AUD'].map((currency) => `<option value="${currency}" ${s.currency === currency ? 'selected' : ''}>${currency}</option>`).join('')}</select></div>
-        <div class="simple-field"><label>Visibility</label><select data-prop="visibility" ${disabledAttr()}><option value="team" ${s.visibility === 'team' ? 'selected' : ''}>Team visible</option><option value="private" ${s.visibility === 'private' ? 'selected' : ''}>Private</option></select></div>
+        <div class="simple-field"><label>Access</label><input type="text" value="Communal" disabled></div>
         <div class="simple-field description-field"><label>Description</label><textarea data-prop="description" rows="2" ${disabledAttr()} placeholder="What type of experience is this?">${escapeHtml(s.description)}</textarea></div>
       </div>
     </div>
@@ -542,19 +544,23 @@ async function confirmVersionSave() {
 async function duplicateRecord(record) {
   try {
     const copy = cloneAsNew(record.format_data);
-    copy.visibility = 'private';
+
+    // Every duplicate is part of the same communal library.
+    copy.visibility = 'team';
+
     const created = await createFormat(copy);
     await refreshFormats({ preserveDraft: true });
     openRecord(state.formats.find((item) => item.id === created.id) || created);
-    toast('A private editable copy was created.', 'success');
+
+    toast('A communal editable copy was created.', 'success');
   } catch (error) {
     toast(error.message || 'Could not duplicate this format.', 'error');
   }
 }
 
 async function removeCurrent() {
-  if (!isOwner() || !state.currentRecord) return;
-  if (!window.confirm(`Delete “${state.currentRecord.name}” and all of its version history?`)) return;
+  if (!state.session || !state.currentRecord) return;
+  if (!window.confirm(`Delete “${state.currentRecord.name}” and all of its version history for everyone?`)) return;
   try {
     await deleteFormat(state.currentRecord.id);
     state.currentRecord = null;

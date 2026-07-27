@@ -79,17 +79,18 @@ export async function listFormats() {
 }
 
 export async function createFormat(format) {
+  const communalFormat = { ...format, visibility: 'team' };
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   const userId = userData.user.id;
   const { data, error } = await supabase
     .from('formats')
     .insert({
-      name: format.name.trim() || 'Untitled format',
-      description: format.description?.trim() || '',
-      visibility: format.visibility || 'team',
-      currency: format.currency || 'USD',
-      format_data: format,
+      name: communalFormat.name.trim() || 'Untitled format',
+      description: communalFormat.description?.trim() || '',
+      visibility: 'team',
+      currency: communalFormat.currency || 'USD',
+      format_data: communalFormat,
       owner_id: userId,
       updated_by: userId,
       last_change_note: 'Created format',
@@ -105,14 +106,15 @@ export async function createFormat(format) {
 }
 
 export async function updateFormat(record, format, changeNote) {
+  const communalFormat = { ...format, visibility: 'team' };
   const { data, error } = await supabase.rpc('update_lbe_format', {
     p_format_id: record.id,
     p_expected_version: record.version_number,
-    p_name: format.name.trim() || 'Untitled format',
-    p_description: format.description?.trim() || '',
-    p_visibility: format.visibility || 'team',
-    p_currency: format.currency || 'USD',
-    p_format_data: format,
+    p_name: communalFormat.name.trim() || 'Untitled format',
+    p_description: communalFormat.description?.trim() || '',
+    p_visibility: 'team',
+    p_currency: communalFormat.currency || 'USD',
+    p_format_data: communalFormat,
     p_change_note: changeNote?.trim() || 'Updated assumptions',
   });
   if (error) throw error;
