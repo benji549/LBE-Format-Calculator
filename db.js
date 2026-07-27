@@ -19,13 +19,22 @@ export async function getSession() {
   return data.session;
 }
 
-export async function sendMagicLink(email) {
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await supabase.auth.signInWithOtp({
+export async function signInWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    options: { emailRedirectTo: redirectTo },
+    password,
   });
   if (error) throw error;
+  return data;
+}
+
+export async function signUpWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function signOut() {

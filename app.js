@@ -16,7 +16,8 @@ import {
   getSession,
   listFormats,
   listVersions,
-  sendMagicLink,
+  signInWithPassword,
+  signUpWithPassword,
   signOut,
   subscribeToFormats,
   updateFormat,
@@ -682,12 +683,39 @@ function handleExpenseInput(target) {
 $('#loginForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const email = $('#loginEmail').value.trim();
-  $('#loginStatus').textContent = 'Sending sign-in link…';
+  const password = $('#loginPassword').value;
+  $('#loginStatus').textContent = 'Signing in…';
   try {
-    await sendMagicLink(email);
-    $('#loginStatus').textContent = 'Check your email and open the sign-in link in this browser.';
+    await signInWithPassword(email, password);
+    $('#loginStatus').textContent = '';
   } catch (error) {
-    $('#loginStatus').textContent = error.message || 'Could not send the sign-in link.';
+    $('#loginStatus').textContent = error.message || 'Could not sign in.';
+  }
+});
+
+$('#createAccountButton').addEventListener('click', async () => {
+  const email = $('#loginEmail').value.trim();
+  const password = $('#loginPassword').value;
+
+  if (!email) {
+    $('#loginStatus').textContent = 'Enter an email address first.';
+    return;
+  }
+  if (password.length < 6) {
+    $('#loginStatus').textContent = 'Use a password with at least 6 characters.';
+    return;
+  }
+
+  $('#loginStatus').textContent = 'Creating account…';
+  try {
+    const data = await signUpWithPassword(email, password);
+    if (data.session) {
+      $('#loginStatus').textContent = '';
+    } else {
+      $('#loginStatus').textContent = 'Account created. Supabase is still requiring email confirmation; disable Confirm email in the Email provider settings.';
+    }
+  } catch (error) {
+    $('#loginStatus').textContent = error.message || 'Could not create the account.';
   }
 });
 

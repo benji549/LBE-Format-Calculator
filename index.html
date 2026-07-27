@@ -30,9 +30,15 @@
       <div class="brand-mark">LBE</div>
       <h1>Team Format Calculator</h1>
       <p>Create, share, version, and compare LBE business models.</p>
-      <label for="loginEmail">Work email</label>
+      <label for="loginEmail">Email</label>
       <input id="loginEmail" type="email" autocomplete="email" required placeholder="name@company.com">
-      <button class="btn primary full" type="submit">Send sign-in link</button>
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
+      <div class="auth-actions">
+        <button class="btn primary" type="submit">Sign in</button>
+        <button id="createAccountButton" class="btn" type="button">Create account</button>
+      </div>
+      <p class="auth-help">First visit: create an account. Later, sign in with the same email and password.</p>
       <div id="loginStatus" class="form-status"></div>
     </form>
   </section>
