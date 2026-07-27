@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Collaborative LBE format profit and expense calculator.">
+  <title>LBE Team Calculator</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+
+  <section id="setupScreen" class="center-screen hidden">
+    <div class="auth-card wide-card">
+      <div class="brand-mark">LBE</div>
+      <h1>Connect this app to Supabase</h1>
+      <p>The code is ready, but <code>config.js</code> still contains placeholder credentials.</p>
+      <ol>
+        <li>Create a Supabase project.</li>
+        <li>Run <code>supabase/schema.sql</code> in the SQL Editor.</li>
+        <li>Paste your Project URL and publishable key into <code>config.js</code>.</li>
+        <li>Host the folder on Netlify, Vercel, Cloudflare Pages, or GitHub Pages.</li>
+      </ol>
+      <p class="muted">The service-role or secret key must never be placed in this browser application.</p>
+    </div>
+  </section>
+
+  <section id="authScreen" class="center-screen hidden">
+    <form id="loginForm" class="auth-card">
+      <div class="brand-mark">LBE</div>
+      <h1>Team Format Calculator</h1>
+      <p>Create, share, version, and compare LBE business models.</p>
+      <label for="loginEmail">Work email</label>
+      <input id="loginEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+      <button class="btn primary full" type="submit">Send sign-in link</button>
+      <div id="loginStatus" class="form-status"></div>
+    </form>
+  </section>
+
+  <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Collaborative planning</div>
+        <h1>LBE Format Calculator</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="syncStatus" class="sync-status">Cloud connected</span>
+        <button id="profileButton" class="user-button" type="button"></button>
+        <button id="signOutButton" class="btn ghost" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="library-panel">
+        <div class="library-head">
+          <div>
+            <h2>Format library</h2>
+            <p>Open, compare, or duplicate team models.</p>
+          </div>
+          <button id="newFormatButton" class="btn primary" type="button">+ New</button>
+        </div>
+
+        <div class="library-controls">
+          <input id="searchInput" type="search" placeholder="Search formats">
+          <select id="libraryFilter" aria-label="Filter formats">
+            <option value="all">All visible</option>
+            <option value="mine">My formats</option>
+            <option value="team">Team formats</option>
+          </select>
+        </div>
+
+        <div class="compare-banner">
+          <span><strong id="compareCount">0</strong> selected</span>
+          <button id="openComparisonButton" class="btn small" type="button" disabled>Compare</button>
+          <button id="clearComparisonButton" class="link-button" type="button">Clear</button>
+        </div>
+
+        <div id="formatList" class="format-list"></div>
+      </aside>
+
+      <section class="editor-panel">
+        <div id="emptyEditor" class="empty-editor">
+          <div class="empty-icon">⌁</div>
+          <h2>Select a format or create a new one</h2>
+          <p>Team-visible formats can be viewed and compared by every signed-in teammate. Only the owner can update the original.</p>
+        </div>
+
+        <div id="editorContent" class="hidden">
+          <div class="editor-toolbar">
+            <div>
+              <div id="editorOwner" class="eyebrow"></div>
+              <h2 id="editorTitle">Untitled format</h2>
+              <div id="editorMetadata" class="metadata"></div>
+            </div>
+            <div class="editor-actions">
+              <button id="historyButton" class="btn" type="button">History</button>
+              <button id="duplicateButton" class="btn" type="button">Duplicate</button>
+              <button id="deleteButton" class="btn danger hidden" type="button">Delete</button>
+              <button id="saveButton" class="btn primary" type="button">Save to cloud</button>
+            </div>
+          </div>
+
+          <div class="editor-grid">
+            <div id="formRoot" class="form-column"></div>
+            <aside id="resultsRoot" class="results-column"></aside>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="saveDialog">
+    <form method="dialog" class="dialog-card" id="saveDialogForm">
+      <h2>Save a new version</h2>
+      <p>Briefly describe what changed so teammates can understand the history.</p>
+      <label for="changeNote">Change note</label>
+      <textarea id="changeNote" rows="3" maxlength="240" placeholder="Updated rent and staffing assumptions"></textarea>
+      <div class="dialog-actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button id="confirmSaveButton" class="btn primary" value="default">Save version</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog">
+    <div class="dialog-card large-dialog">
+      <div class="dialog-heading">
+        <div>
+          <h2>Version history</h2>
+          <p id="historySubtitle"></p>
+        </div>
+        <button class="icon-button" data-close-dialog="historyDialog" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="comparisonDialog">
+    <div class="dialog-card comparison-dialog">
+      <div class="dialog-heading">
+        <div>
+          <h2>Format comparison</h2>
+          <p>Selected formats use their own currency labels. No currency conversion is applied.</p>
+        </div>
+        <button class="icon-button" data-close-dialog="comparisonDialog" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="comparisonRoot" class="comparison-root"></div>
+    </div>
+  </dialog>
+
+  <dialog id="profileDialog">
+    <form method="dialog" class="dialog-card" id="profileForm">
+      <h2>Your profile</h2>
+      <label for="displayName">Display name</label>
+      <input id="displayName" type="text" maxlength="80" required>
+      <div class="dialog-actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button id="saveProfileButton" class="btn primary" value="default">Save profile</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
